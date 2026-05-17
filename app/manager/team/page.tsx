@@ -56,15 +56,16 @@ export default function ManagerTeamPage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
-    const { data: teamMembers } = await supabase
+
+    const { data: teamMembers, error } = await supabase
       .from('profiles')
       .select('*')
       .eq('manager_id', user.id)
 
-    if (!teamMembers) { setLoading(false); return }
+
+    if (!teamMembers || teamMembers.length === 0) { setLoading(false); return }
     setEmployees(teamMembers)
 
-    // Get active cycle
     const { data: cycle } = await supabase
       .from('cycles')
       .select('id')
@@ -73,15 +74,14 @@ export default function ManagerTeamPage() {
 
     if (!cycle) { setLoading(false); return }
 
-    // Get goal sheets for all team members
     const { data: goalSheets } = await supabase
       .from('goal_sheets')
       .select('*')
-      .in('employee_id', teamMembers.map(e => e.id))
+      .in('employee_id', teamMembers.map((e: Employee) => e.id))
       .eq('cycle_id', cycle.id)
 
     const sheetsMap: Record<string, GoalSheet> = {}
-    goalSheets?.forEach(s => { sheetsMap[s.employee_id] = s })
+    goalSheets?.forEach((s: GoalSheet) => { sheetsMap[s.employee_id] = s })
     setSheets(sheetsMap)
     setLoading(false)
   }
@@ -122,7 +122,6 @@ export default function ManagerTeamPage() {
       })
       .eq('id', sheet.id)
 
-    // Lock all goals
     await supabase
       .from('goals')
       .update({ is_locked: true })
@@ -184,7 +183,6 @@ export default function ManagerTeamPage() {
         <p className="text-gray-500 text-sm mt-1">Review and approve goal sheets</p>
       </div>
 
-      {/* Team table */}
       {employees.length === 0 ? (
         <div className="text-center py-16 bg-white rounded-xl border border-dashed border-gray-300">
           <p className="text-gray-400 text-sm">No direct reports found</p>
@@ -251,12 +249,9 @@ export default function ManagerTeamPage() {
         </div>
       )}
 
-      {/* Review panel */}
       {selected && (
         <div className="fixed inset-0 bg-black/40 flex items-end sm:items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[85vh] flex flex-col shadow-xl">
-
-            {/* Panel header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
               <div>
                 <h2 className="font-semibold text-gray-900">{selected.full_name}'s Goals</h2>
@@ -264,15 +259,9 @@ export default function ManagerTeamPage() {
                   {sheets[selected.id]?.status === 'approved' ? 'Approved' : 'Awaiting your review'}
                 </p>
               </div>
-              <button
-                onClick={() => setSelected(null)}
-                className="text-gray-400 hover:text-gray-600 text-xl"
-              >
-                ×
-              </button>
+              <button onClick={() => setSelected(null)} className="text-gray-400 hover:text-gray-600 text-xl">×</button>
             </div>
 
-            {/* Goals list */}
             <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3">
               {loadingGoals ? (
                 <p className="text-sm text-gray-400 text-center py-8">Loading goals...</p>
@@ -284,17 +273,11 @@ export default function ManagerTeamPage() {
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
-                            {goal.thrust_area}
-                          </span>
-                          <span className="text-xs text-[#4F6EF7] bg-blue-50 px-2 py-0.5 rounded-full">
-                            {UOM_LABELS[goal.uom_type]}
-                          </span>
+                          <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{goal.thrust_area}</span>
+                          <span className="text-xs text-[#4F6EF7] bg-blue-50 px-2 py-0.5 rounded-full">{UOM_LABELS[goal.uom_type]}</span>
                         </div>
                         <p className="font-medium text-gray-900 text-sm">{goal.title}</p>
-                        {goal.description && (
-                          <p className="text-xs text-gray-500 mt-1">{goal.description}</p>
-                        )}
+                        {goal.description && <p className="text-xs text-gray-500 mt-1">{goal.description}</p>}
                       </div>
                       <div className="ml-4 text-right">
                         {editingGoal === goal.id ? (
@@ -311,7 +294,6 @@ export default function ManagerTeamPage() {
                       </div>
                     </div>
 
-                    {/* Target row */}
                     <div className="flex items-center gap-4 mt-2">
                       {goal.target_value !== null && (
                         editingGoal === goal.id ? (
@@ -331,23 +313,12 @@ export default function ManagerTeamPage() {
                       )}
                     </div>
 
-                    {/* Edit controls */}
                     {sheets[selected.id]?.status === 'submitted' && (
                       <div className="mt-2 flex gap-2">
                         {editingGoal === goal.id ? (
                           <>
-                            <button
-                              onClick={() => handleSaveGoalEdit(goal.id)}
-                              className="text-xs text-green-600 hover:underline"
-                            >
-                              Save
-                            </button>
-                            <button
-                              onClick={() => setEditingGoal(null)}
-                              className="text-xs text-gray-400 hover:underline"
-                            >
-                              Cancel
-                            </button>
+                            <button onClick={() => handleSaveGoalEdit(goal.id)} className="text-xs text-green-600 hover:underline">Save</button>
+                            <button onClick={() => setEditingGoal(null)} className="text-xs text-gray-400 hover:underline">Cancel</button>
                           </>
                         ) : (
                           <button
@@ -370,7 +341,6 @@ export default function ManagerTeamPage() {
               )}
             </div>
 
-            {/* Actions */}
             {sheets[selected.id]?.status === 'submitted' && (
               <div className="px-6 py-4 border-t border-gray-100">
                 <textarea
